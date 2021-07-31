@@ -167,15 +167,12 @@ func calculatePercentages(data map[string]int) map[string]int {
 	}
 	diff := 100 - totalFloored
 	// Distribute ones to sources with the highest remainder until no more ones to distribute
-	var resources []string
-	for resource := range percentages {
-		resources = append(resources, resource)
-	}
-	sort.Slice(resources, func(i, j int) bool {
-		return remainders[resources[i]] > remainders[resources[j]]
+	resList := resList[:]
+	sort.Slice(resList, func(i, j int) bool {
+		return remainders[resList[i]] > remainders[resList[j]]
 	})
 	newPercentages := make(map[string]int)
-	for _, resource := range resources {
+	for _, resource := range resList {
 		if diff > 0 {
 			newPercentages[resource] = floored[resource] + 1
 			diff -= 1
@@ -190,10 +187,15 @@ func calculatePercentages(data map[string]int) map[string]int {
 // Returns string with a certain number of emojis based on the resource (key in data) and the electricity production (value in data)
 func prepareTweet(data map[string]int) string {
 	// Build list of runes representing the emoji characters
+	// Sort resources by electricity production (descending)
 	runesList := make([]rune, 0)
-	for k, v := range data {
-		count := v
-		emojiRunes := runeMap[k]
+	resList := resList[:]
+	sort.Slice(resList, func(i, j int) bool {
+		return data[resList[i]] > data[resList[j]]
+	})
+	for _, res := range resList {
+		count := data[res]
+		emojiRunes := runeMap[res]
 		if len(emojiRunes) == 1 {
 			// Append space for length 2 for each emoji
 			emojiRunes = append(emojiRunes, 32)
