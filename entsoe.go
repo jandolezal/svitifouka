@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -34,6 +35,15 @@ var emojiMap = map[string]string{
 	"B16": "☀️",
 	"B17": "🗑️",
 	"B19": "🌬️",
+}
+
+var dataSample = map[string]int{
+	"B01": 251,
+	"B11": 133,
+	"B15": 266,
+	"B16": 433,
+	"B17": 20,
+	"B19": 92,
 }
 
 var params = map[string]string{
@@ -124,7 +134,60 @@ func getEntsoeData() map[string]int {
 	return data
 }
 
+// Calculate electricity production in percent using the largest remainder method.
+// Percetage as integer for the tweet (number of emojis)
+// https://en.wikipedia.org/wiki/Largest_remainder_method
+func calculatePercentages(data map[string]int) map[string]int {
+	// Total production
+	total := 0
+	for _, v := range data {
+		total += v
+	}
+	// Calculate production in percentages
+	percentages := make(map[string]float64)
+	for k, v := range data {
+		percentages[k] = float64(v) / float64(total) * 100
+	}
+	// Floor percentages to integers
+	floored := make(map[string]int)
+	for k, v := range percentages {
+		floored[k] = int(v)
+	}
+	// Compute difference of percentages and floored percentages
+	remainders := make(map[string]float64)
+	for k := range percentages {
+		remainders[k] = percentages[k] - float64(floored[k])
+	}
+	fmt.Print("Remainders", remainders)
+	// Get difference from the floored total and 100
+	totalFloored := 0
+	for _, v := range floored {
+		totalFloored += v
+	}
+	diff := 100 - totalFloored
+	// Distribute ones to sources with the highest remainder until no more ones to distribute
+	var resources []string
+	for resource := range percentages {
+		resources = append(resources, resource)
+	}
+	sort.Slice(resources, func(i, j int) bool {
+		return remainders[resources[i]] > remainders[resources[j]]
+	})
+	newPercentages := make(map[string]int)
+	for _, resource := range resources {
+		if diff > 0 {
+			newPercentages[resource] = floored[resource] + 1
+			diff -= 1
+		} else {
+			newPercentages[resource] = floored[resource]
+		}
+	}
+	return newPercentages
+}
+
 func main() {
 	data := getEntsoeData()
 	fmt.Print(data)
+	percentages := calculatePercentages(data)
+	fmt.Print(percentages)
 }
