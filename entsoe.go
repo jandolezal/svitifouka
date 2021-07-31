@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -37,6 +38,16 @@ var emojiMap = map[string]string{
 	"B19": "🌬️",
 }
 
+var runeMap = map[string][]rune{
+	"B01": {127795},
+	"B09": {127757},
+	"B11": {128167},
+	"B15": {127807},
+	"B16": {9728, 65039},
+	"B17": {128465, 65039},
+	"B19": {127788, 65039},
+}
+
 var dataSample = map[string]int{
 	"B01": 251,
 	"B11": 133,
@@ -44,13 +55,6 @@ var dataSample = map[string]int{
 	"B16": 433,
 	"B17": 20,
 	"B19": 92,
-}
-
-var params = map[string]string{
-	"securityToken": os.Getenv("ENTSOE_TOKEN"),
-	"In_Domain":     "10YCZ-CEPS-----N",
-	"ProcessType":   "A16",
-	"DocumentType":  "A75",
 }
 
 // getPastHourInterval prepares timeInterval param for Entsoe API call.
@@ -95,8 +99,6 @@ func getEntsoeData() map[string]int {
 	client := &http.Client{}
 	// Prepare timeInterval param
 	timeInterval := getPastHourInterval()
-	params["timeInterval"] = timeInterval
-	// fmt.Print(params)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Print(err)
@@ -121,7 +123,6 @@ func getEntsoeData() map[string]int {
 	body, err := ioutil.ReadAll(resp.Body)
 	var document Document
 	xml.Unmarshal(body, &document)
-	// fmt.Print(document)
 	// Extract only renewable electricity production into a map
 	data := make(map[string]int)
 	for _, t := range document.TimeSeries {
@@ -185,9 +186,49 @@ func calculatePercentages(data map[string]int) map[string]int {
 	return newPercentages
 }
 
+// Prepare tweet string from the data
+// Returns string with a certain number of emojis based on the resource (key in data) and the electricity production (value in data)
+func prepareTweet(data map[string]int) string {
+	// Build list of runes representing the emoji characters
+	runesList := make([]rune, 0)
+	for k, v := range data {
+		count := v
+		emojiRunes := runeMap[k]
+		if len(emojiRunes) == 1 {
+			// Append space for length 2 for each emoji
+			emojiRunes = append(emojiRunes, 32)
+		}
+		resRunes := make([]rune, 0)
+		for i := 0; i < count; i++ {
+			resRunes = append(resRunes, emojiRunes...)
+		}
+		runesList = append(runesList, resRunes...)
+	}
+	// Split the string into lines with 10 emojis on line
+	// 200 runes respresenting 100 emojis
+	// 20 runes per line
+	n := 20
+	runesLines := make([][]rune, 0)
+	for i := 0; i < len(runesList); i = i + n {
+		runesLines = append(runesLines, runesList[i:i+n])
+	}
+	// Build tweet string from the runes
+	var tweet string
+	for _, line := range runesLines {
+		for _, r := range line {
+			tweet += string(r)
+		}
+		tweet += "\n"
+	}
+	tweet = strings.ReplaceAll(tweet, " ", "")
+	return tweet
+}
+
 func main() {
 	data := getEntsoeData()
 	fmt.Print(data)
 	percentages := calculatePercentages(data)
 	fmt.Print(percentages)
+	tweet := prepareTweet(percentages)
+	fmt.Printf("%v", tweet)
 }
