@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,6 +9,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
 )
 
 // Transparency Platform restul API - user guide
@@ -26,7 +28,8 @@ var resMap = map[string]string{
 	"B19": "Wind Onshore",
 }
 
-var resList = [7]string{"B01", "B09", "B11", "B15", "B16", "B17", "B19"}
+// B17 (Waste) removed
+var resList = [6]string{"B01", "B09", "B11", "B15", "B16", "B19"}
 
 var emojiMap = map[string]string{
 	"B01": "🌳",
@@ -34,7 +37,7 @@ var emojiMap = map[string]string{
 	"B11": "💧",
 	"B15": "🌿",
 	"B16": "☀️",
-	"B17": "🗑️",
+	// "B17": "🗑️",
 	"B19": "🌬️",
 }
 
@@ -44,7 +47,7 @@ var runeMap = map[string][]rune{
 	"B11": {128167},
 	"B15": {127807},
 	"B16": {9728, 65039},
-	"B17": {128465, 65039},
+	// "B17": {128465, 65039},
 	"B19": {127788, 65039},
 }
 
@@ -53,7 +56,7 @@ var dataSample = map[string]int{
 	"B11": 133,
 	"B15": 266,
 	"B16": 433,
-	"B17": 20,
+	// "B17": 20,
 	"B19": 92,
 }
 
@@ -159,7 +162,6 @@ func calculatePercentages(data map[string]int) map[string]int {
 	for k := range percentages {
 		remainders[k] = percentages[k] - float64(floored[k])
 	}
-	fmt.Print("Remainders", remainders)
 	// Get difference from the floored total and 100
 	totalFloored := 0
 	for _, v := range floored {
@@ -227,10 +229,29 @@ func prepareTweet(data map[string]int) string {
 }
 
 func main() {
+	// Get datat from Entsoe API
 	data := getEntsoeData()
-	fmt.Print(data)
+
+	// Get share of each renewable technology on electrity production
 	percentages := calculatePercentages(data)
-	fmt.Print(percentages)
-	tweet := prepareTweet(percentages)
-	fmt.Printf("%v", tweet)
+
+	// Prepare string of emojis representing the production to tweet it
+	myTweet := prepareTweet(percentages)
+
+	consumerKey := os.Getenv("CONSUMER_KEY")
+	consumerSecret := os.Getenv("CONSUMER_SECRET")
+	accessToken := os.Getenv("ACCESS_TOKEN")
+	accessSecret := os.Getenv("ACCESS_TOKEN_SECRET")
+
+	// Usage according to the go-twitter library
+	config := oauth1.NewConfig(consumerKey, consumerSecret)
+	token := oauth1.NewToken(accessToken, accessSecret)
+	httpClient := config.Client(oauth1.NoContext, token)
+	// Twitter client
+	client := twitter.NewClient(httpClient)
+	// Send a Tweet
+	_, _, err := client.Statuses.Update(myTweet, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
