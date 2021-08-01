@@ -1,7 +1,20 @@
 # Svítí a fouká
 
-Drobný projekt k úvodnímu seznámení se s jazykem Go.
+Twitter bot [@sviti-fouka](https://twitter.com/sviti_fouka) tvítující energetický mix elektřiny vyrobené v Česku z obnovitelných zdrojů za předešlou hodinu z dat [Entsoe](https://transparency.entsoe.eu/). Za každé procento podílu na výrobě jeden emoji.
 
-Výsledkem by měl být Twitter bot tvítující obnovitelnou elektřinu vyrobenou za uplynulou hodinu z dat Entsoe. 
+![Snímek obrazovky statusu](status.png)
 
-Vychází ze starší podoby [@sviti-fouka](https://github.com/jandolezal/sviti-fouka), ale bude se podobat spíše [@energy-mix](https://github.com/jandolezal/energy-mix).
+- 🌳 biomasa
+- 🌍 geotermální energie
+- 💧 voda
+- 🌿 ostatní (převážně bioplyn)
+- ☀️ slunce
+- 🌬️ vítr
+
+Nezahrnuje obnovitelnou složku komunálních odpadů.
+
+## Použití
+
+Běží jako [GitHub Action](https://docs.github.com/en/actions/guides/building-and-testing-python) podle nastavení v `.github/workflows`. Je třeba pro repozitář [nastavit](https://docs.github.com/en/actions/reference/encrypted-secrets#creating-encrypted-secrets-for-a-repository) tokeny pro komunikaci s Entsoe a Twitter API.
+
+Drobný projekt k úvodnímu seznámení se s jazykem Go. Vychází ze starší podoby botu[@sviti-fouka](https://github.com/jandolezal/sviti-fouka) a současné podoby botu [@energy-mix](https://github.com/jandolezal/energy-mix) napsaných s využitím Pythonu a jeho knihoven.
