@@ -6,7 +6,8 @@ Twitter bot [@sviti-fouka](https://twitter.com/sviti_fouka) tvítující energet
 
 - 🌳 biomasa
 - 🌍 geotermální energie
-- 💧 voda
+- 💦 voda (průtok)
+- 💧 voda (rezervoár)
 - 🌿 ostatní (převážně bioplyn)
 - ☀️ slunce
 - 🌬️ vítr

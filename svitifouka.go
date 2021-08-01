@@ -22,6 +22,7 @@ var resMap = map[string]string{
 	"B01": "Biomass",
 	"B09": "Geothermal",
 	"B11": "Hydro Run-of-river and poundage",
+	"B12": "Hydro Water Reservoir",
 	"B15": "Other renewable",
 	"B16": "Solar",
 	"B17": "Waste",
@@ -29,12 +30,13 @@ var resMap = map[string]string{
 }
 
 // B17 (Waste) removed
-var resList = [6]string{"B01", "B09", "B11", "B15", "B16", "B19"}
+var resList = [7]string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
 var emojiMap = map[string]string{
 	"B01": "🌳",
 	"B09": "🌍",
-	"B11": "💧",
+	"B11": "💦",
+	"B12": "💧",
 	"B15": "🌿",
 	"B16": "☀️",
 	// "B17": "🗑️",
@@ -44,7 +46,8 @@ var emojiMap = map[string]string{
 var runeMap = map[string][]rune{
 	"B01": {127795},
 	"B09": {127757},
-	"B11": {128167},
+	"B11": {128166},
+	"B12": {128167},
 	"B15": {127807},
 	"B16": {9728, 65039},
 	// "B17": {128465, 65039},
