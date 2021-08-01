@@ -1,0 +1,21 @@
+name: svitifouka
+on:
+  schedule:
+    - cron: "05 4-16 * * *"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.16'
+    - name: Run
+      run: go run svitifouka.go
+      env:
+        ENTSOE_TOKEN: ${{ secrets.ENTSOE_TOKEN }}
+        CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+        CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
+        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
