@@ -1,3 +1,11 @@
+/* Twitter bot tweeting renewable electricity production in Czechia as emojis.
+
+Requests data from the Entsoe API, prepares a map from each renewable technology
+to its share on renewable electricity production and makes a tweet string
+representing the production as 100 emojis with the emoji depending on the technology.
+
+It tweets the string (updates status of twitter.com/sviti_fouka) using the go-twitter library.
+*/
 package main
 
 import (
@@ -18,31 +26,17 @@ import (
 // https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html
 const url = "https://transparency.entsoe.eu/api?"
 
-var resMap = map[string]string{
-	"B01": "Biomass",
-	"B09": "Geothermal",
-	"B11": "Hydro Run-of-river and poundage",
-	"B12": "Hydro Water Reservoir",
-	"B15": "Other renewable",
-	"B16": "Solar",
-	"B17": "Waste",
-	"B19": "Wind Onshore",
-}
+var resList = [...]string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
-// B17 (Waste) removed
-var resList = [7]string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
-
-var emojiMap = map[string]string{
-	"B01": "🌳",
-	"B09": "🌍",
-	"B11": "💦",
-	"B12": "💧",
-	"B15": "🌿",
-	"B16": "☀️",
-	// "B17": "🗑️",
-	"B19": "🌬️",
-}
-
+/* Runes representing emoji characters
+B01, 🌳 , Biomass
+B09, 🌍, Geothermal
+B11, 💦", Hydro Run-of-river and poundage
+B12, 💧, Hydro Water Reservoir
+B15, 🌿", Other renewable
+B16, ☀️, Solar
+B19, 🌬️, Wind Onshore
+*/
 var runeMap = map[string][]rune{
 	"B01": {127795},
 	"B09": {127757},
@@ -50,17 +44,7 @@ var runeMap = map[string][]rune{
 	"B12": {128167},
 	"B15": {127807},
 	"B16": {9728, 65039},
-	// "B17": {128465, 65039},
 	"B19": {127788, 65039},
-}
-
-var dataSample = map[string]int{
-	"B01": 251,
-	"B11": 133,
-	"B15": 266,
-	"B16": 433,
-	// "B17": 20,
-	"B19": 92,
 }
 
 // getPastHourInterval prepares timeInterval param for Entsoe API call.
@@ -107,8 +91,7 @@ func getEntsoeData() map[string]int {
 	timeInterval := getPastHourInterval()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Print(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	// Prepare query string for Entsoe API call
 	q := req.URL.Query()
@@ -118,19 +101,21 @@ func getEntsoeData() map[string]int {
 	q.Add("DocumentType", "A75")
 	q.Add("timeInterval", timeInterval)
 	req.URL.RawQuery = q.Encode()
-	// fmt.Println(req.URL.String())
 	// Call Entsoe
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Print(err)
+		log.Fatal(err)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var document Document
 	xml.Unmarshal(body, &document)
 	// Extract only renewable electricity production into a map
-	data := make(map[string]int)
+	data := make(map[string]int, len(resList))
 	for _, t := range document.TimeSeries {
 		for _, code := range resList {
 			if t.MktPSRType.PsrType == code {
@@ -151,17 +136,17 @@ func calculatePercentages(data map[string]int) map[string]int {
 		total += v
 	}
 	// Calculate production in percentages
-	percentages := make(map[string]float64)
+	percentages := make(map[string]float64, len(data))
 	for k, v := range data {
 		percentages[k] = float64(v) / float64(total) * 100
 	}
 	// Floor percentages to integers
-	floored := make(map[string]int)
+	floored := make(map[string]int, len(data))
 	for k, v := range percentages {
 		floored[k] = int(v)
 	}
 	// Compute difference of percentages and floored percentages
-	remainders := make(map[string]float64)
+	remainders := make(map[string]float64, len(data))
 	for k := range percentages {
 		remainders[k] = percentages[k] - float64(floored[k])
 	}
@@ -176,7 +161,7 @@ func calculatePercentages(data map[string]int) map[string]int {
 	sort.Slice(resList, func(i, j int) bool {
 		return remainders[resList[i]] > remainders[resList[j]]
 	})
-	newPercentages := make(map[string]int)
+	newPercentages := make(map[string]int, len(data))
 	for _, resource := range resList {
 		if diff > 0 {
 			newPercentages[resource] = floored[resource] + 1
@@ -211,7 +196,7 @@ func prepareTweet(data map[string]int) string {
 		}
 		runesList = append(runesList, resRunes...)
 	}
-	// Split the string into lines with 10 emojis on line
+	// Split the string into 10 lines with 10 emojis on line
 	// 200 runes respresenting 100 emojis
 	// 20 runes per line
 	n := 20
@@ -240,6 +225,7 @@ func main() {
 
 	// Prepare string of emojis representing the production to tweet it
 	myTweet := prepareTweet(percentages)
+	log.Print(myTweet)
 
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
