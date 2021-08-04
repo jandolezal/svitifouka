@@ -105,6 +105,8 @@ func getEntsoeData() map[string]int {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
+	} else if resp.StatusCode != http.StatusOK {
+		log.Fatal("Got non-ok response status: ", resp.Status)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
