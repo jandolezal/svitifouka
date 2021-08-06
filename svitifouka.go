@@ -27,7 +27,7 @@ import (
 // https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html
 const url = "https://transparency.entsoe.eu/api?"
 
-var resList = [...]string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
+var technologies = []string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
 /* Runes representing emoji characters
 B01, 🌳 , Biomass
@@ -118,9 +118,9 @@ func getEntsoeData(url string) (map[string]int, error) {
 	var document Document
 	xml.Unmarshal(body, &document)
 	// Extract only renewable electricity production into a map
-	data := make(map[string]int, len(resList))
+	data := make(map[string]int, len(technologies))
 	for _, t := range document.TimeSeries {
-		for _, code := range resList {
+		for _, code := range technologies {
 			if t.MktPSRType.PsrType == code {
 				data[code] = t.Period.Point.Quantity
 			}
@@ -132,7 +132,7 @@ func getEntsoeData(url string) (map[string]int, error) {
 // Calculate electricity production in percent using the largest remainder method.
 // Percetage as integer for the tweet (number of emojis)
 // https://en.wikipedia.org/wiki/Largest_remainder_method
-func calculatePercentages(data map[string]int) map[string]int {
+func calculatePercentages(data map[string]int, technologies []string) map[string]int {
 	// Total production
 	total := 0
 	for _, v := range data {
@@ -160,12 +160,11 @@ func calculatePercentages(data map[string]int) map[string]int {
 	}
 	diff := 100 - totalFloored
 	// Distribute ones to sources with the highest remainder until no more ones to distribute
-	resList := resList[:]
-	sort.Slice(resList, func(i, j int) bool {
-		return remainders[resList[i]] > remainders[resList[j]]
+	sort.Slice(technologies, func(i, j int) bool {
+		return remainders[technologies[i]] > remainders[technologies[j]]
 	})
 	newPercentages := make(map[string]int, len(data))
-	for _, resource := range resList {
+	for _, resource := range technologies {
 		if diff > 0 {
 			newPercentages[resource] = floored[resource] + 1
 			diff -= 1
@@ -178,17 +177,16 @@ func calculatePercentages(data map[string]int) map[string]int {
 
 // Prepare tweet string from the data
 // Returns string with a certain number of emojis based on the resource (key in data) and the electricity production (value in data)
-func prepareTweet(data map[string]int) string {
+func prepareTweet(data map[string]int, technologies []string, mapping map[string][]rune) string {
 	// Build list of runes representing the emoji characters
 	// Sort resources by electricity production (descending)
 	runesList := make([]rune, 0)
-	resList := resList[:]
-	sort.Slice(resList, func(i, j int) bool {
-		return data[resList[i]] > data[resList[j]]
+	sort.Slice(technologies, func(i, j int) bool {
+		return data[technologies[i]] > data[technologies[j]]
 	})
-	for _, res := range resList {
+	for _, res := range technologies {
 		count := data[res]
-		emojiRunes := runeMap[res]
+		emojiRunes := mapping[res]
 		if len(emojiRunes) == 1 {
 			// Append space for length 2 for each emoji
 			emojiRunes = append(emojiRunes, 32)
@@ -227,10 +225,10 @@ func main() {
 	}
 
 	// Get share of each renewable technology on electrity production
-	percentages := calculatePercentages(data)
+	percentages := calculatePercentages(data, technologies)
 
 	// Prepare string of emojis representing the production to tweet it
-	myTweet := prepareTweet(percentages)
+	myTweet := prepareTweet(percentages, technologies, runeMap)
 
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")

@@ -28,19 +28,16 @@ var wantedPercentage = map[string]int{
 var wantedTweet = "☀️☀️☀️☀️☀️☀️☀️☀️☀️☀️\n☀️☀️☀️☀️☀️☀️☀️☀️☀️☀️\n☀️☀️☀️☀️☀️☀️☀️☀️☀️☀️\n☀️☀️☀️☀️☀️☀️☀️☀️☀️☀️\n☀️☀️☀️☀️☀️☀️☀️☀️☀️☀️\n☀️☀️☀️🌿🌿🌿🌿🌿🌿🌿\n🌿🌿🌿🌿🌿🌿🌿🌿🌿🌳\n🌳🌳🌳🌳🌳🌳🌳🌳🌳🌳\n🌳🌳🌳🌳💧💧💧💧💧💧\n💧💧💦💦💦💦💦💦💦🌬️\n"
 
 func TestCalculatePercentages(t *testing.T) {
-	got := calculatePercentages(sampleData)
+	got := calculatePercentages(sampleData, technologies)
 	eq := reflect.DeepEqual(got, wantedPercentage)
-	if eq {
-		t.Log("The maps are equal.")
-	} else {
-		t.Errorf("%v\n%v\n", got, wantedPercentage)
+	if !eq {
+		t.Errorf("wanted %v, but got %v", got, wantedPercentage)
 	}
 }
 
 func TestPrepareTwet(t *testing.T) {
-	got := prepareTweet(wantedPercentage)
+	got := prepareTweet(wantedPercentage, technologies, runeMap)
 	if got != wantedTweet {
-		t.Errorf("%v\n%v\n", got, wantedTweet)
+		t.Errorf("wanted\n%v\n, but got\n%v\n", got, wantedTweet)
 	}
-
 }
