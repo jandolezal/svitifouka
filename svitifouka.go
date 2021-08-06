@@ -10,6 +10,7 @@ package main
 
 import (
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -85,13 +86,13 @@ type Point struct {
 }
 
 // getEntsoeData prepares a map from renewable type code to electricity generation in past hour
-func getEntsoeData() map[string]int {
+func getEntsoeData(url string) (map[string]int, error) {
 	client := &http.Client{}
 	// Prepare timeInterval param
 	timeInterval := getPastHourInterval()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal(err)
+		return make(map[string]int), err
 	}
 	// Prepare query string for Entsoe API call
 	q := req.URL.Query()
@@ -104,15 +105,15 @@ func getEntsoeData() map[string]int {
 	// Call Entsoe
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return make(map[string]int), err
 	} else if resp.StatusCode != http.StatusOK {
-		log.Fatal("Got non-ok response status: ", resp.Status)
+		return make(map[string]int), errors.New("Got non-ok response status:" + resp.Status)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return make(map[string]int), err
 	}
 	var document Document
 	xml.Unmarshal(body, &document)
@@ -125,7 +126,7 @@ func getEntsoeData() map[string]int {
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
 // Calculate electricity production in percent using the largest remainder method.
@@ -220,14 +221,16 @@ func prepareTweet(data map[string]int) string {
 
 func main() {
 	// Get datat from Entsoe API
-	data := getEntsoeData()
+	data, err := getEntsoeData(url)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Get share of each renewable technology on electrity production
 	percentages := calculatePercentages(data)
 
 	// Prepare string of emojis representing the production to tweet it
 	myTweet := prepareTweet(percentages)
-	log.Print(myTweet)
 
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
@@ -241,7 +244,7 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 	// Send a Tweet
-	_, _, err := client.Statuses.Update(myTweet, nil)
+	_, _, err = client.Statuses.Update(myTweet, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
