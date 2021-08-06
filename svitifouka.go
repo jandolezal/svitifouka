@@ -92,7 +92,7 @@ func getEntsoeData(url string) (map[string]int, error) {
 	timeInterval := getPastHourInterval()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return make(map[string]int), err
+		return nil, err
 	}
 	// Prepare query string for Entsoe API call
 	q := req.URL.Query()
@@ -105,15 +105,15 @@ func getEntsoeData(url string) (map[string]int, error) {
 	// Call Entsoe
 	resp, err := client.Do(req)
 	if err != nil {
-		return make(map[string]int), err
+		return nil, err
 	} else if resp.StatusCode != http.StatusOK {
-		return make(map[string]int), errors.New("Got non-ok response status:" + resp.Status)
+		return nil, errors.New("Got non-ok response status:" + resp.Status)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return make(map[string]int), err
+		return nil, err
 	}
 	var document Document
 	xml.Unmarshal(body, &document)
