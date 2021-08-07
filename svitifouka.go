@@ -1,7 +1,16 @@
+/* Twitter bot tweeting renewable electricity production in Czechia as emojis.
+
+Requests data from the Entsoe API, prepares a map from each renewable technology
+to its share on renewable electricity production and makes a tweet string
+representing the production as 100 emojis with the emoji depending on the technology.
+
+It tweets the string (updates status of twitter.com/sviti_fouka) using the go-twitter library.
+*/
 package main
 
 import (
 	"encoding/xml"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,31 +27,17 @@ import (
 // https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html
 const url = "https://transparency.entsoe.eu/api?"
 
-var resMap = map[string]string{
-	"B01": "Biomass",
-	"B09": "Geothermal",
-	"B11": "Hydro Run-of-river and poundage",
-	"B12": "Hydro Water Reservoir",
-	"B15": "Other renewable",
-	"B16": "Solar",
-	"B17": "Waste",
-	"B19": "Wind Onshore",
-}
+var technologies = []string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
-// B17 (Waste) removed
-var resList = [7]string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
-
-var emojiMap = map[string]string{
-	"B01": "🌳",
-	"B09": "🌍",
-	"B11": "💦",
-	"B12": "💧",
-	"B15": "🌿",
-	"B16": "☀️",
-	// "B17": "🗑️",
-	"B19": "🌬️",
-}
-
+/* Runes representing emoji characters
+B01, 🌳 , Biomass
+B09, 🌍, Geothermal
+B11, 💦", Hydro Run-of-river and poundage
+B12, 💧, Hydro Water Reservoir
+B15, 🌿", Other renewable
+B16, ☀️, Solar
+B19, 🌬️, Wind Onshore
+*/
 var runeMap = map[string][]rune{
 	"B01": {127795},
 	"B09": {127757},
@@ -50,17 +45,7 @@ var runeMap = map[string][]rune{
 	"B12": {128167},
 	"B15": {127807},
 	"B16": {9728, 65039},
-	// "B17": {128465, 65039},
 	"B19": {127788, 65039},
-}
-
-var dataSample = map[string]int{
-	"B01": 251,
-	"B11": 133,
-	"B15": 266,
-	"B16": 433,
-	// "B17": 20,
-	"B19": 92,
 }
 
 // getPastHourInterval prepares timeInterval param for Entsoe API call.
@@ -101,14 +86,13 @@ type Point struct {
 }
 
 // getEntsoeData prepares a map from renewable type code to electricity generation in past hour
-func getEntsoeData() map[string]int {
+func getEntsoeData(url string) (map[string]int, error) {
 	client := &http.Client{}
 	// Prepare timeInterval param
 	timeInterval := getPastHourInterval()
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Print(err)
-		os.Exit(1)
+		return nil, err
 	}
 	// Prepare query string for Entsoe API call
 	q := req.URL.Query()
@@ -118,50 +102,54 @@ func getEntsoeData() map[string]int {
 	q.Add("DocumentType", "A75")
 	q.Add("timeInterval", timeInterval)
 	req.URL.RawQuery = q.Encode()
-	// fmt.Println(req.URL.String())
 	// Call Entsoe
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Print(err)
+		return nil, err
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("Got non-ok response status:" + resp.Status)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 	var document Document
 	xml.Unmarshal(body, &document)
 	// Extract only renewable electricity production into a map
-	data := make(map[string]int)
+	data := make(map[string]int, len(technologies))
 	for _, t := range document.TimeSeries {
-		for _, code := range resList {
+		for _, code := range technologies {
 			if t.MktPSRType.PsrType == code {
 				data[code] = t.Period.Point.Quantity
 			}
 		}
 	}
-	return data
+	return data, nil
 }
 
 // Calculate electricity production in percent using the largest remainder method.
 // Percetage as integer for the tweet (number of emojis)
 // https://en.wikipedia.org/wiki/Largest_remainder_method
-func calculatePercentages(data map[string]int) map[string]int {
+func calculatePercentages(data map[string]int, technologies []string) map[string]int {
 	// Total production
 	total := 0
 	for _, v := range data {
 		total += v
 	}
 	// Calculate production in percentages
-	percentages := make(map[string]float64)
+	percentages := make(map[string]float64, len(data))
 	for k, v := range data {
 		percentages[k] = float64(v) / float64(total) * 100
 	}
 	// Floor percentages to integers
-	floored := make(map[string]int)
+	floored := make(map[string]int, len(data))
 	for k, v := range percentages {
 		floored[k] = int(v)
 	}
 	// Compute difference of percentages and floored percentages
-	remainders := make(map[string]float64)
+	remainders := make(map[string]float64, len(data))
 	for k := range percentages {
 		remainders[k] = percentages[k] - float64(floored[k])
 	}
@@ -172,12 +160,11 @@ func calculatePercentages(data map[string]int) map[string]int {
 	}
 	diff := 100 - totalFloored
 	// Distribute ones to sources with the highest remainder until no more ones to distribute
-	resList := resList[:]
-	sort.Slice(resList, func(i, j int) bool {
-		return remainders[resList[i]] > remainders[resList[j]]
+	sort.Slice(technologies, func(i, j int) bool {
+		return remainders[technologies[i]] > remainders[technologies[j]]
 	})
-	newPercentages := make(map[string]int)
-	for _, resource := range resList {
+	newPercentages := make(map[string]int, len(data))
+	for _, resource := range technologies {
 		if diff > 0 {
 			newPercentages[resource] = floored[resource] + 1
 			diff -= 1
@@ -190,17 +177,16 @@ func calculatePercentages(data map[string]int) map[string]int {
 
 // Prepare tweet string from the data
 // Returns string with a certain number of emojis based on the resource (key in data) and the electricity production (value in data)
-func prepareTweet(data map[string]int) string {
+func prepareTweet(data map[string]int, technologies []string, mapping map[string][]rune) string {
 	// Build list of runes representing the emoji characters
 	// Sort resources by electricity production (descending)
 	runesList := make([]rune, 0)
-	resList := resList[:]
-	sort.Slice(resList, func(i, j int) bool {
-		return data[resList[i]] > data[resList[j]]
+	sort.Slice(technologies, func(i, j int) bool {
+		return data[technologies[i]] > data[technologies[j]]
 	})
-	for _, res := range resList {
+	for _, res := range technologies {
 		count := data[res]
-		emojiRunes := runeMap[res]
+		emojiRunes := mapping[res]
 		if len(emojiRunes) == 1 {
 			// Append space for length 2 for each emoji
 			emojiRunes = append(emojiRunes, 32)
@@ -211,7 +197,7 @@ func prepareTweet(data map[string]int) string {
 		}
 		runesList = append(runesList, resRunes...)
 	}
-	// Split the string into lines with 10 emojis on line
+	// Split the string into 10 lines with 10 emojis on line
 	// 200 runes respresenting 100 emojis
 	// 20 runes per line
 	n := 20
@@ -233,13 +219,16 @@ func prepareTweet(data map[string]int) string {
 
 func main() {
 	// Get datat from Entsoe API
-	data := getEntsoeData()
+	data, err := getEntsoeData(url)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Get share of each renewable technology on electrity production
-	percentages := calculatePercentages(data)
+	percentages := calculatePercentages(data, technologies)
 
 	// Prepare string of emojis representing the production to tweet it
-	myTweet := prepareTweet(percentages)
+	myTweet := prepareTweet(percentages, technologies, runeMap)
 
 	consumerKey := os.Getenv("CONSUMER_KEY")
 	consumerSecret := os.Getenv("CONSUMER_SECRET")
@@ -253,7 +242,7 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 	// Send a Tweet
-	_, _, err := client.Statuses.Update(myTweet, nil)
+	_, _, err = client.Statuses.Update(myTweet, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
