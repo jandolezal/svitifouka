@@ -30,20 +30,20 @@ const url = "https://transparency.entsoe.eu/api?"
 var technologies = []string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
 /* Runes representing emoji characters
-B01, 🌳 , Biomass
+B01, 🌿, Biomass
 B09, 🌍, Geothermal
-B11, 💦", Hydro Run-of-river and poundage
+B11, 💦, Hydro Run-of-river and poundage
 B12, 💧, Hydro Water Reservoir
-B15, 🌿", Other renewable
+B15, ♻️, Other renewable
 B16, ☀️, Solar
 B19, 🌬️, Wind Onshore
 */
 var runeMap = map[string][]rune{
-	"B01": {127795},
+	"B01": {127807},
 	"B09": {127757},
 	"B11": {128166},
 	"B12": {128167},
-	"B15": {127807},
+	"B15": {9851, 65039},
 	"B16": {9728, 65039},
 	"B19": {127788, 65039},
 }

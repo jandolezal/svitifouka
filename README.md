@@ -4,13 +4,13 @@ Twitter bot [@sviti-fouka](https://twitter.com/sviti_fouka) tvítující energet
 
 ![Snímek obrazovky statusu](status.png)
 
-- 🌳 biomasa
+- 🌿 biomasa
 - 🌍 geotermální energie
-- 💦 voda (průtok)
-- 💧 voda (rezervoár)
-- 🌿 ostatní (převážně bioplyn)
+- ♻️ ostatní obnovitelné zdroje
 - ☀️ slunce
 - 🌬️ vítr
+- 💦 voda (průtok)
+- 💧 voda (rezervoár)
 
 Nezahrnuje obnovitelnou složku komunálních odpadů.
 
