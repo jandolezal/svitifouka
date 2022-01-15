@@ -243,7 +243,7 @@ func main() {
 	client := twitter.NewClient(httpClient)
 	// Send a Tweet
 	_, _, err = client.Statuses.Update(myTweet, nil)
-	if err != nil {
+	if (err != nil) && (!strings.Contains(err.Error(), "duplicate")) {
 		log.Fatal(err)
 	}
 }
