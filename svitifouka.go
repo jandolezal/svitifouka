@@ -25,7 +25,7 @@ import (
 
 // Transparency Platform restul API - user guide
 // https://transparency.entsoe.eu/content/static_content/Static%20content/web%20api/Guide.html
-const url = "https://transparency.entsoe.eu/api?"
+const url = "https://web-api.tp.entsoe.eu/api?"
 
 var technologies = []string{"B01", "B09", "B11", "B12", "B15", "B16", "B19"}
 
