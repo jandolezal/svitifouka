@@ -1,8 +1,7 @@
 module github.com/jandolezal/svitifouka
 
-go 1.16
+go 1.21
 
-require (
-	github.com/dghubble/go-twitter v0.0.0-20210609183100-2fdbf421508e
-	github.com/dghubble/oauth1 v0.7.0
-)
+require github.com/michimani/gotwi v0.14.0
+
+require github.com/stretchr/testify v1.8.1 // indirect

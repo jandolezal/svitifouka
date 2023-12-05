@@ -11,16 +11,20 @@ package main
 import (
 	"encoding/xml"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"time"
+	"fmt"
+	"context"
 
-	"github.com/dghubble/go-twitter/twitter"
-	"github.com/dghubble/oauth1"
+	"github.com/michimani/gotwi"
+	"github.com/michimani/gotwi/tweet/managetweet"
+	"github.com/michimani/gotwi/tweet/managetweet/types"
+
 )
 
 // Transparency Platform restul API - user guide
@@ -107,11 +111,11 @@ func getEntsoeData(url string) (map[string]int, error) {
 	if err != nil {
 		return nil, err
 	} else if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("Got non-ok response status:" + resp.Status)
+		return nil, errors.New("Got non-ok response status from Entsoe:" + resp.Status)
 	}
 	defer resp.Body.Close()
 	// Parse xml response
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -230,20 +234,32 @@ func main() {
 	// Prepare string of emojis representing the production to tweet it
 	myTweet := prepareTweet(percentages, technologies, runeMap)
 
-	consumerKey := os.Getenv("CONSUMER_KEY")
-	consumerSecret := os.Getenv("CONSUMER_SECRET")
-	accessToken := os.Getenv("ACCESS_TOKEN")
-	accessSecret := os.Getenv("ACCESS_TOKEN_SECRET")
+	// Set your Twitter API credentials
+	accessToken := os.Getenv("GOTWI_ACCESS_TOKEN")
+	accessSecret := os.Getenv("GOTWI_ACCESS_TOKEN_SECRET")
 
-	// Usage according to the go-twitter library
-	config := oauth1.NewConfig(consumerKey, consumerSecret)
-	token := oauth1.NewToken(accessToken, accessSecret)
-	httpClient := config.Client(oauth1.NoContext, token)
-	// Twitter client
-	client := twitter.NewClient(httpClient)
-	// Send a Tweet
-	_, _, err = client.Statuses.Update(myTweet, nil)
-	if (err != nil) && (!strings.Contains(err.Error(), "duplicate")) {
-		log.Fatal(err)
+	in := &gotwi.NewClientInput{
+		AuthenticationMethod: gotwi.AuthenMethodOAuth1UserContext,
+		OAuthToken:           accessToken,
+		OAuthTokenSecret:     accessSecret,
 	}
+
+	c, err := gotwi.NewClient(in)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	p := &types.CreateInput{
+		Text: gotwi.String(myTweet),
+	}
+
+	res, err := managetweet.Create(context.Background(), c, p)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	fmt.Printf("[%s] %s\n", gotwi.StringValue(res.Data.ID), gotwi.StringValue(res.Data.Text))
+
 }
