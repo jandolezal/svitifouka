@@ -10,12 +10,12 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: '1.16'
+        go-version: '1.21'
     - name: Run
       run: go run svitifouka.go
       env:
         ENTSOE_TOKEN: ${{ secrets.ENTSOE_TOKEN }}
-        CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
-        CONSUMER_SECRET: ${{ secrets.CONSUMER_SECRET }}
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+        GOTWI_API_KEY: ${{ secrets.GOTWI_API_KEY }}
+        GOTWI_API_KEY_SECRET: ${{ secrets.GOTWI_API_KEY_SECRET }}
+        GOTWI_ACCESS_TOKEN: ${{ secrets.GOTWI_ACCESS_TOKEN }}
+        GOTWI_ACCESS_TOKEN_SECRET: ${{ secrets.GOTWI_ACCESS_TOKEN_SECRET }}
